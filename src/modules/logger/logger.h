@@ -90,6 +90,7 @@ public:
 		boot_until_shutdown,
 		rc_aux1,
 		arm_until_shutdown,
+		mission_end,
 	};
 
 	enum class PrintLoadReason {

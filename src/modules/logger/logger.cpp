@@ -248,7 +248,7 @@ Logger *Logger::instantiate(int argc, char *argv[])
 	uint32_t log_interval = 3500;
 	float rate_factor = 1.0f;
 	int log_buffer_size = 12 * 1024;
-	Logger::LogMode log_mode = Logger::LogMode::while_armed;
+	Logger::LogMode log_mode = Logger::LogMode::mission_end;
 	bool error_flag = false;
 	bool log_name_timestamp = false;
 	LogWriter::Backend backend = LogWriter::BackendAll;
@@ -336,7 +336,9 @@ Logger *Logger::instantiate(int argc, char *argv[])
 		case '?':
 			error_flag = true;
 			break;
-
+		case 'r':
+			log_mode = Logger::LogMode::while_armed;
+			break;
 		default:
 			PX4_WARN("unrecognized flag");
 			error_flag = true;
@@ -1100,6 +1102,16 @@ bool Logger::start_stop_logging()
 {
 	bool updated = false;
 	bool desired_state = false;
+
+	if (_log_mode == LogMode::mission_end) {
+		if (!_writer.is_started(LogType::Full)) {
+			start_log_file(LogType::Full));
+			if ((MissonLogType)_param_sdlog_mission.get() != MissionLogType::Disabled) {
+				start_log_file(LogType::Mission);
+			}
+		}
+		retuen false;
+	}
 
 	if (_log_mode == LogMode::rc_aux1) {
 		// aux1-based logging
