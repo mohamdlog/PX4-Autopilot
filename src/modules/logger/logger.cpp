@@ -49,6 +49,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/battery_status.h>
+#include <uORB/topics/mission_result.h>
 
 #include <drivers/drv_hrt.h>
 #include <mathlib/math/Limits.hpp>
@@ -336,7 +337,7 @@ Logger *Logger::instantiate(int argc, char *argv[])
 		case '?':
 			error_flag = true;
 			break;
-		case 'r':
+		case 'w':
 			log_mode = Logger::LogMode::while_armed;
 			break;
 		default:
@@ -692,6 +693,14 @@ void Logger::run()
 	bool was_started = false;
 
 	while (!should_exit()) {
+		// In mission_end mode, check if the mission is completed.
+		if (_log_mode == LogMode::mission_end && mission_completed()) {
+			PX4_INFO("Mission completed, dumping mission log");
+			stop_log_file(LogType::Full);
+			stop_log_file(LogType::Mission);
+			break;  // Exit the run loop so no further logging occurs.
+		}
+
 		// Start/stop logging (depending on logging mode, by default when arming/disarming)
 		const bool logging_started = start_stop_logging();
 
@@ -1168,6 +1177,17 @@ bool Logger::start_stop_logging()
 
 	return false;
 }
+
+bool Logger::mission_completed()
+{
+    uORB::Subscription mission_result_sub{ORB_ID(mission_result)};
+    mission_result_s mission_result{};
+    if (mission_result_sub.copy(&mission_result)) {
+        return mission_result.finished;
+    }
+    return false;
+}
+
 
 void Logger::handle_vehicle_command_update()
 {
